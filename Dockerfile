@@ -1,17 +1,27 @@
-FROM node:16.17.0-alpine as builder
-WORKDIR /app
-COPY ./package.json .
-COPY ./yarn.lock .
-RUN yarn install
-COPY . .
-ARG TMDB_V3_API_KEY
-ENV VITE_APP_TMDB_V3_API_KEY=${TMDB_V3_API_KEY}
-ENV VITE_APP_API_ENDPOINT_URL="https://api.themoviedb.org/3"
-RUN yarn build
+# 1. Use Node.js base image
+FROM node:18-alpine
 
-FROM nginx:stable-alpine
-WORKDIR /usr/share/nginx/html
-RUN rm -rf ./*
-COPY --from=builder /app/dist .
-EXPOSE 80
-ENTRYPOINT ["nginx", "-g", "daemon off;"]
+# 2. Set working directory
+WORKDIR /app
+
+# 3. Copy package files first (for caching)
+COPY package*.json ./
+
+# 4. Install dependencies
+RUN npm install
+
+# 5. Copy application source code
+COPY . .
+
+# 6. Build the React app
+RUN npm run build
+
+# 7. Install serve to run the build
+RUN npm install -g serve
+
+# 8. Expose application port
+EXPOSE 3000
+
+# 9. Start the application
+CMD ["serve", "-s", "build", "-l", "3000"]
+
